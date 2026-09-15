@@ -167,4 +167,4 @@ chmod +x tron.sh
 
 ## 📄 开源许可证
 
-本项目基于 [MIT 许可证](LICENSE) 开源。
+[许可证](LICENSE)
