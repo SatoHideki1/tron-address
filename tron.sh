@@ -28,7 +28,7 @@ RESET="\033[0m"
 print_banner() {
     clear 2>/dev/null || true
     echo -e "${CYAN}===============================================================${RESET}"
-    echo -e "${WHITE}      ⚡ TRON 波场地址靓号极速生成器 (Debian/Ubuntu 专属) ⚡    ${RESET}"
+    echo -e "${WHITE}      ⚡ TRON 波场地址靓号极速生成器 (Linux / macOS) ⚡    ${RESET}"
     echo -e "${YELLOW}      - 纯本地安全离线 | 椭圆曲线点加法 | 精确 CPU 占用调控 -    ${RESET}"
     echo -e "${CYAN}===============================================================${RESET}"
 }
@@ -46,16 +46,29 @@ check_environment() {
     fi
 
     if [[ $need_install -eq 1 ]]; then
-        echo -e "${YELLOW}[!] 检测到系统缺少编译依赖 (gcc / make / libssl-dev)...${RESET}"
-        if [[ $(id -u) -eq 0 ]]; then
-            echo -e "${CYAN}[*] 正在通过 apt 自动安装依赖环境...${RESET}"
-            apt-get update && apt-get install -y build-essential libssl-dev
-        elif command -v sudo >/dev/null 2>&1; then
-            echo -e "${CYAN}[*] 正在通过 sudo apt 自动安装依赖环境...${RESET}"
-            sudo apt-get update && sudo apt-get install -y build-essential libssl-dev
+        local os_name
+        os_name="$(uname -s)"
+        if [[ "$os_name" == "Darwin" ]]; then
+            echo -e "${YELLOW}[!] 检测到 macOS 环境缺少 OpenSSL 依赖...${RESET}"
+            if command -v brew >/dev/null 2>&1; then
+                echo -e "${CYAN}[*] 正在通过 Homebrew 自动安装 openssl@3...${RESET}"
+                brew install openssl@3
+            else
+                echo -e "${RED}[ERROR] 未检测到 Homebrew，请先安装 Homebrew 或手动执行: brew install openssl@3${RESET}"
+                exit 1
+            fi
         else
-            echo -e "${RED}[ERROR] 缺少编译环境，请以 root 身份运行: apt update && apt install -y build-essential libssl-dev${RESET}"
-            exit 1
+            echo -e "${YELLOW}[!] 检测到系统缺少编译依赖 (gcc / make / libssl-dev)...${RESET}"
+            if [[ $(id -u) -eq 0 ]]; then
+                echo -e "${CYAN}[*] 正在通过 apt 自动安装依赖环境...${RESET}"
+                apt-get update && apt-get install -y build-essential libssl-dev
+            elif command -v sudo >/dev/null 2>&1; then
+                echo -e "${CYAN}[*] 正在通过 sudo apt 自动安装依赖环境...${RESET}"
+                sudo apt-get update && sudo apt-get install -y build-essential libssl-dev
+            else
+                echo -e "${RED}[ERROR] 缺少编译环境，请以 root 身份运行: apt update && apt install -y build-essential libssl-dev${RESET}"
+                exit 1
+            fi
         fi
     fi
 }
@@ -163,16 +176,32 @@ run_wizard() {
     fi
 
     echo ""
-    echo -e "${GREEN}>>> 第三步: CPU 核心数与占用率调控 (核心特性)${RESET}"
-    echo -e "  当前服务器检测到共 ${CYAN}${total_cores}${RESET} 个 CPU 核心。"
-    read -r -p "请设置使用的 CPU 线程/核心数 [1-${total_cores}, 默认 ${total_cores}]: " threads_val
-    threads_val=${threads_val:-$total_cores}
+    local metal_flag=""
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo -e "${GREEN}>>> 第三步: 硬件加速与资源调控${RESET}"
+        read -r -p "检测到 macOS 系统，是否开启 Apple Metal 3 GPU 硬件加速？[Y/n, 默认 Y]: " metal_choice
+        metal_choice=${metal_choice:-y}
+        if [[ "$metal_choice" == "y" || "$metal_choice" == "Y" ]]; then
+            metal_flag="--metal"
+            echo -e "  已启用 ${GREEN}Metal 3 GPU 硬件加速${RESET}！"
+        fi
+    else
+        echo -e "${GREEN}>>> 第三步: CPU 核心数与占用率调控 (核心特性)${RESET}"
+    fi
 
-    echo -e "  CPU 占用率上限调控 (通过占空比平滑控温，防止 VPS 满载告警或耗尽积分):"
-    read -r -p "请设置 CPU 占用率上限百分比 (10-100) [默认 100]: " cpu_val
+    if [[ -z "$metal_flag" ]]; then
+        echo -e "  当前系统检测到共 ${CYAN}${total_cores}${RESET} 个 CPU 核心。"
+        read -r -p "请设置使用的 CPU 线程/核心数 [1-${total_cores}, 默认 ${total_cores}]: " threads_val
+        threads_val=${threads_val:-$total_cores}
+    else
+        threads_val=$total_cores
+    fi
+
+    echo -e "  资源占用率上限调控 (通过占空比平滑控温，防止设备发热):"
+    read -r -p "请设置占用率上限百分比 (10-100) [默认 100]: " cpu_val
     cpu_val=${cpu_val:-100}
 
-    read -r -p "是否以低优先级 (nice -n 19) 运行？(不抢占系统其他网站/数据库服务) [Y/n, 默认 Y]: " nice_choice
+    read -r -p "是否以低优先级 (nice -n 19) 运行？(不影响系统其他工作) [Y/n, 默认 Y]: " nice_choice
     nice_choice=${nice_choice:-y}
 
     echo ""
@@ -185,7 +214,7 @@ run_wizard() {
         nice_prefix="nice -n 19"
     fi
 
-    local full_cmd="$nice_prefix ./$BIN_NAME $rule_args -t $threads_val -c $cpu_val -n $count_val -o $RESULT_FILE"
+    local full_cmd="$nice_prefix ./$BIN_NAME $rule_args $metal_flag -t $threads_val -c $cpu_val -n $count_val -o $RESULT_FILE"
 
     echo ""
     echo -e "${CYAN}---------------------------------------------------------------${RESET}"

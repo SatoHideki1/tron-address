@@ -9,9 +9,11 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <getopt.h>
-#include <sys/time.h>
 #include "tron.h"
 #include "match.h"
+#ifdef __APPLE__
+#include "metal/tron_metal.h"
+#endif
 
 static volatile sig_atomic_t g_running = 1;
 static uint64_t g_total_keys = 0;
@@ -44,7 +46,7 @@ static double get_time_sec(void) {
 static void print_banner(void) {
     printf("\033[1;36m");
     printf("===============================================================\n");
-    printf("     ⚡ TRON 波场地址靓号极速生成器 (Debian/Ubuntu 专属) ⚡    \n");
+    printf("     ⚡ TRON 波场地址靓号极速生成器 (Linux / macOS) ⚡    \n");
     printf("     - 安全离线运算 | 点加法加速 | 精确 CPU 占用调控 -        \n");
     printf("===============================================================\n");
     printf("\033[0m");
@@ -67,6 +69,8 @@ static void print_help(const char *prog) {
     printf("  -t, --threads <数量>      工作线程数 (默认: 系统全部 CPU 核心)\n");
     printf("  -c, --cpu-limit <1-100>   每个线程 CPU 占用百分比上限 (默认: 100%%)\n");
     printf("                            例: -c 50 占空比限速为 50%%，防止满载\n\n");
+    printf("GPU 硬件加速 (Apple Metal):\n");
+    printf("  -g, --metal               启用 Metal 3 GPU 硬件加速 (macOS 专属，速度提升 20~60倍)\n\n");
     printf("运行控制 (Run Control):\n");
     printf("  -n, --count <数量>        找到 N 个靓号后自动退出 (默认: 1，设为 0 表示无限寻找)\n");
     printf("  -o, --output <文件路径>   保存结果的文件名 (默认: found_addresses.txt)\n");
@@ -247,12 +251,19 @@ int main(int argc, char *argv[]) {
         {"output",      required_argument, 0, 'o'},
         {"quiet",       no_argument,       0, 'q'},
         {"verify",      required_argument, 0, 'v'},
+        {"metal",       no_argument,       0, 'g'},
+        {"gpu",         no_argument,       0, 'g'},
         {"help",        no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
-    while ((opt = getopt_long(argc, argv, "s:p:b:m:k:r:f:it:c:n:o:qv:h", long_options, NULL)) != -1) {
+    int use_metal = 0;
+
+    while ((opt = getopt_long(argc, argv, "s:p:b:m:k:r:f:it:c:n:o:qv:hg", long_options, NULL)) != -1) {
         switch (opt) {
+            case 'g':
+                use_metal = 1;
+                break;
             case 's':
                 strncpy(match_cfg.suffix, optarg, sizeof(match_cfg.suffix) - 1);
                 if (match_cfg.mode == MATCH_PREFIX) {
@@ -378,6 +389,18 @@ int main(int argc, char *argv[]) {
         printf("  - 结果文件  : %s\n", g_output_file);
         printf("---------------------------------------------------------------\n");
         printf("🚀 开始计算，按 Ctrl+C 可随时安全终止并保存进度...\n\n");
+    }
+
+    if (use_metal) {
+#ifdef __APPLE__
+        if (tron_metal_is_supported()) {
+            return tron_metal_start(&match_cfg, g_target_count, g_output_file, cpu_limit, g_quiet);
+        } else {
+            fprintf(stderr, "提示: 当前系统未检测到 Metal GPU 支持，将自动回退为 CPU 运算模式。\n");
+        }
+#else
+        fprintf(stderr, "提示: Metal 3 GPU 硬件加速仅在 macOS 系统可用，当前系统将自动使用 CPU 运算模式。\n");
+#endif
     }
 
     pthread_t *threads = (pthread_t *)malloc(num_threads * sizeof(pthread_t));

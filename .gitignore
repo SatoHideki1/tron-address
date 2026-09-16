@@ -11,3 +11,6 @@ tron_daemon.log
 # Private keys / found results (keep safe)
 found_addresses.txt
 *.key
+
+# macOS
+.DS_Store

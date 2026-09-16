@@ -1,18 +1,20 @@
-# ⚡ TRON 波场地址靓号极速生成器 (Debian / Ubuntu 专属)
+# ⚡ TRON 波场地址靓号极速生成器 (Linux & macOS)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Debian%20%7C%20Ubuntu%20%7C%20Linux-green.svg)]()
+[![Platform: Linux & macOS](https://img.shields.io/badge/Platform-Debian%20%7C%20Ubuntu%20%7C%20macOS-green.svg)]()
 [![Language: C99](https://img.shields.io/badge/Language-C99-orange.svg)]()
 [![Security: Offline CSPRNG](https://img.shields.io/badge/Security-100%25%20Offline-brightgreen.svg)]()
 
-专为 **Debian / Ubuntu** Linux 云服务器与 VPS 设计的极速、安全、全开源波场（TRON）靓号地址生成器。支持**精细化 CPU 占用控制**（核心数限制 + 占空比平滑控温 + 低优先级守护），让您在 VPS 上挂机算号的同时绝不影响正常网站和业务运行。
+专为 **Debian / Ubuntu / Linux** 与 **macOS** 打造的极速、安全、全开源波场（TRON）靓号地址生成器。支持**精细化 CPU 占用控制**（核心数限制 + 占空比平滑控温 + 低优先级守护），让您在 VPS 或本地电脑上挂机算号的同时绝不影响正常业务与使用。
 
 ---
 
 ## 🌟 核心亮点
 
+本项目具有以下核心优势：
 - 🛡️ **100% 开源透明与离线安全**：纯 C 语言编写，绝对零网络连接，全程使用安全伪随机数生成器（CSPRNG），私钥仅存在于本地内存并可实时写入文件。
 - 🚀 **椭圆曲线点加法（Point Addition）加速**：利用 $P_{i+1} = P_i + G$ 批量递增算法，避免单次全标量相乘，结合自实现轻量 Keccak-256，单核算力可达 **150,000+ 地址/秒**（8核可达 100万+ 地址/秒）。
+- 💻 **Linux 与 macOS 完美跨平台支持**：针对 Linux (GCC / Clang) 和 macOS (Apple Silicon M系列 / Intel) 进行了针对性架构优化，无论是部署在云端 VPS 还是在 Mac 本地运行，都能一键编译。
 - 🎛️ **精确 CPU 占用调控（VPS 防封控神器）**：
   - **核心数限制 (`-t`)**：自由指定占用的 CPU 核心数，例如 4 核服务器仅用 2 核。
   - **占用率百分比上限 (`-c`)**：内置高精度占空比平滑限速（10%~100%），如限制为 60%，无论运行多久，云监控平台都不会触发 100% 告警，避免被厂商停机或耗尽突发积分。
@@ -22,18 +24,30 @@
 
 ---
 
-## 🚀 快速上手 (Debian / Ubuntu)
+## 🚀 快速上手
 
-### 1. 克隆仓库并运行一键管理脚本
+### 1. 克隆仓库
 
 ```bash
 git clone https://github.com/SatoHideki1/tron-address.git
 cd tron-address
 chmod +x tron.sh
-./tron.sh
 ```
 
-> **提示**：脚本会自动检查并一键安装依赖（`build-essential` 与 `libssl-dev`），随后使用最高编译优化（`-O3 -march=native`）自动构建二进制程序。
+### 2. 运行一键管理脚本
+
+- **在 Debian / Ubuntu 下**：
+  直接执行 `./tron.sh`，脚本会自动检测并补齐 `build-essential` 和 `libssl-dev` 依赖并编译。
+  ```bash
+  ./tron.sh
+  ```
+
+- **在 macOS 下**：
+  需要先确保安装了 Homebrew 的 OpenSSL（执行一次即可）：
+  ```bash
+  brew install openssl@3
+  ./tron.sh
+  ```
 
 ---
 
